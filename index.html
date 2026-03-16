@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Infectious Disease Simulator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div id="app">
+    <header class="top-bar">
+      <div class="header-titles">
+        <h1>感染症対策司令センター</h1>
+        <div class="disease-name" id="disease-name">ウイルス未検出</div>
+      </div>
+      <div class="global-stats">
+        <div class="stat-box">
+          <span class="stat-label">現在の階級</span>
+          <span class="stat-value" id="player-title" style="color: var(--accent)">研修医</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">進行ステージ</span>
+          <span class="stat-value" id="current-stage" style="color: #fff">1</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">ワクチン開発率</span>
+          <span class="stat-value" id="global-vaccine" style="color: var(--success)">0%</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">予算 (BUDGET)</span>
+          <span class="stat-value" id="global-budget" style="color: var(--success)">$0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">借入残高 (DEBT)</span>
+          <span class="stat-value" id="global-debt" style="color: var(--danger)">$0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">世界総人口</span>
+          <span class="stat-value" id="global-population">0</span>
+        </div>
+        <div class="stat-box warning">
+          <span class="stat-label">総感染者数</span>
+          <span class="stat-value" id="global-infected">0</span>
+        </div>
+        <div class="stat-box danger">
+          <span class="stat-label">総死亡者数</span>
+          <span class="stat-value" id="global-dead">0</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <div class="side-panel left-panel">
+        <h2>対策コマンド</h2>
+
+        <!-- Target Selection UI -->
+        <div class="target-selection"
+          style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+          <div style="margin-bottom: 0.5rem;">
+            <label for="action-scope"
+              style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem;">対象範囲</label>
+            <select id="action-scope" class="ui-select"
+              style="width: 100%; padding: 0.5rem; background: var(--bg-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 4px;">
+              <option value="global">全世界 (Global)</option>
+              <option value="region">地域指定 (Region)</option>
+              <option value="country">特定の国 (Country)</option>
+            </select>
+          </div>
+
+          <div id="target-region-container" style="display: none; margin-bottom: 0.5rem;">
+            <label for="target-region"
+              style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem;">対象地域</label>
+            <select id="target-region" class="ui-select"
+              style="width: 100%; padding: 0.5rem; background: var(--bg-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 4px;">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+
+          <div id="target-country-container" style="display: none; margin-bottom: 0.5rem;">
+            <label for="target-country"
+              style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.3rem;">対象国</label>
+            <select id="target-country" class="ui-select"
+              style="width: 100%; padding: 0.5rem; background: var(--bg-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 4px;">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <div class="action-list">
+          <button class="action-btn" id="btn-emergency-fund" title="緊急予算を要請（次回予算半減）">緊急予算要請 <span>+$500M</span></button>
+          <button class="action-btn" id="btn-take-loan" title="借金をする（利子付きで毎期返済）">国際借入 <span>+$1000M</span></button>
+          <hr class="panel-divider">
+          <button class="action-btn measure-btn" id="btn-masks" data-cost="50">マスク着用義務化 <span>-$50M</span></button>
+          <button class="action-btn measure-btn" id="btn-distance" data-cost="100">ソーシャルディスタンス
+            <span>-$100M</span></button>
+          <button class="action-btn measure-btn" id="btn-lockdown" data-cost="500">世界的ロックダウン
+            <span>-$500M</span></button>
+          <button class="action-btn measure-btn" id="btn-vaccine" data-cost="300">ワクチン研究投資 <span>-$300M</span></button>
+          <button class="action-btn measure-btn" id="btn-borders" data-cost="200">国境の全面封鎖 <span>-$200M</span></button>
+        </div>
+
+        <h2 class="mt-4">地域情報</h2>
+        <div id="region-info" class="region-info empty">
+          地図上の地域を選択してください
+        </div>
+      </div>
+
+      <div class="map-container">
+        <div id="map"></div>
+        <div class="date-display">
+          経過日数 <span id="sim-day">0</span> 日
+        </div>
+      </div>
+
+      <div class="side-panel right-panel">
+        <h2>司令部通信ログ</h2>
+        <div class="news-chat" id="news-chat">
+          <!-- ログアイテムがJavaScriptによって挿入されます -->
+        </div>
+      </div>
+    </main>
+
+    <!-- Title Overlay -->
+    <div id="title-overlay" class="overlay">
+      <div class="overlay-content" style="max-width: 600px; text-align: center;">
+        <h1 style="font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--accent);">PANDEMIC DEFENSE</h1>
+        <h2 style="font-size: 1.2rem; margin-bottom: 2rem; color: var(--text-muted);">感染症対策シミュレーション</h2>
+
+        <div class="player-profile"
+          style="background: rgba(13,17,23,0.8); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+          <div style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">[ 司令官データ ]</div>
+          <div id="title-player-rank" style="font-size: 1.5rem; font-weight: bold; color: #fff; margin-bottom: 0.5rem;">
+            研修医 (Lv. 1)</div>
+          <div id="title-player-xp" style="font-size: 0.85rem; color: var(--accent);">XP: 0 / 100</div>
+        </div>
+
+        <div class="start-buttons" style="flex-direction: column; gap: 1rem; align-items: center;">
+          <div style="width: 100%; max-width: 300px; text-align: left;">
+            <label for="stage-select"
+              style="display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;">[ 挑戦するステージを選択
+              ]</label>
+            <select id="stage-select" class="ui-select"
+              style="width: 100%; padding: 0.8rem; font-size: 1.1rem; background: var(--bg-dark); color: #fff; border: 1px solid var(--border-color); border-radius: 4px; margin-bottom: 1rem;">
+              <!-- Options injected via main.ts -->
+            </select>
+          </div>
+
+          <button id="btn-start-stage" class="primary-btn"
+            style="width: 100%; max-width: 300px; font-size: 1.2rem; padding: 1rem;">
+            ▶ 作戦開始 (START OPERATION)
+          </button>
+
+          <button id="btn-new-game" class="primary-btn"
+            style="width: 100%; max-width: 300px; background: rgba(48, 54, 61, 0.8); color: #fff; border: 1px solid var(--border-color);">
+            最初から挑む (STAGE 1)
+          </button>
+
+          <button id="btn-delete-data" class="action-btn"
+            style="width: 100%; max-width: 300px; justify-content: center; color: var(--danger); border-color: rgba(248, 81, 73, 0.3);">
+            セーブデータ初期化
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Win/Clear Overlay -->
+    <div id="win-overlay" class="overlay hidden">
+      <div class="overlay-content" style="background: rgba(30, 41, 59, 0.95); border: 2px solid var(--success);">
+        <h2 style="color: var(--success); font-size: 2rem; margin-bottom: 1rem;">🎉 ステージクリア 🎉</h2>
+        <p id="win-message" style="margin-bottom: 1rem; font-size: 1.1rem;">ワクチンが完成し、人類は特効薬を手に入れました！</p>
+        <div id="win-xp-display"
+          style="font-size: 1.2rem; color: var(--accent); margin-bottom: 2rem; font-weight: bold;">+500 XP獲得</div>
+        <div class="start-buttons">
+          <button id="btn-restart" class="primary-btn" style="background: var(--success);">メニューへ戻る</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>
